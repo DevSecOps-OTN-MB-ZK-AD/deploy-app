@@ -1,0 +1,6 @@
+services:
+  app:
+    container_name: log8100-tp2-webapp
+    image: log8100-tp2-webapp
+    ports:
+      - 9090:9090
