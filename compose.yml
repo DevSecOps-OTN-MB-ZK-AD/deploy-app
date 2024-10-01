@@ -4,3 +4,22 @@ services:
     image: log8100-tp2-webapp
     ports:
       - 9090:9090
+      - 3000:3000
+    depends_on:
+      - db  
+    environment:
+      - DB_HOST=db 
+      - DB_USER=tp2
+      - DB_PASSWORD=tp2
+      - DB_NAME=tp2
+      - DATABASE_URL=postgres://tp2:tp2@db:5432/tp2
+
+  db:
+    container_name: log8100-tp2-db
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=tp2
+      - POSTGRES_PASSWORD=tp2
+      - POSTGRES_DB=tp2
+    ports:
+      - 5432:5432

@@ -1,51 +1,70 @@
 "use strict";
 
-var fs = require("fs");
-var path = require("path");
-var Sequelize = require("sequelize");
-var env = process.env.NODE_ENV || "development";
-var config = require("../config/db.js")
+const fs = require("fs");
+const path = require("path");
+const { Sequelize } = require("sequelize");
+const env = process.env.NODE_ENV || "development";
+const config = require("../config/db.js");
+let sequelize;
 
 if (process.env.DATABASE_URL) {
-  var sequelize = new Sequelize("dburl");
+  const dbUrl = process.env.DATABASE_URL;
+  const urlPattern = /^(postgres):\/\/(.*):(.*)@(.*):(\d+)\/(.*)$/; // Match PostgreSQL URL format
+  const match = dbUrl.match(urlPattern);
+
+  if (match) {
+    const dialect = match[1];
+    const username = match[2];
+    const password = match[3];
+    const host = match[4];
+    const port = match[5];
+    const database = match[6];
+
+    sequelize = new Sequelize(database, username, password, {
+      host: host,
+      port: port,
+      dialect: dialect,
+    });
+  } else {
+    console.error("DATABASE_URL format is incorrect.");
+    process.exit(1);
+  }
 } else {
-  var sequelize = new Sequelize("db", "db", "db", {
+  sequelize = new Sequelize("db", "db", "db", {
     host: "db",
-    dialect: "postgres"
+    dialect: "postgres",
   });
 }
 
 sequelize
   .authenticate()
-  .then(function (err) {
-    console.log('Connection has been established successfully.');
+  .then(() => {
+    console.log("Connection has been established successfully.");
   })
-  .catch(function (err) {
-    console.log('Unable to connect to the database:', err);
-  })
+  .catch(err => {
+    console.error("Unable to connect to the database:", err);
+  });
 
 sequelize
   .sync( /*{ force: true }*/ ) // Force To re-initialize tables on each run
-  .then(function (err) {
-    console.log('It worked!');
-  }, function (err) {
-    console.log('An error occurred while creating the table:', err);
+  .then(() => {
+    console.log("It worked!");
   })
-
-var db = {};
+  .catch(err => {
+    console.error("An error occurred while creating the table:", err);
+  });
+const db = {};
 
 fs
   .readdirSync(__dirname)
-  .filter(function (file) {
-    return (file.indexOf(".") !== 0) && (file !== "index.js");
-  })
-  .forEach(function (file) {
-    var model = sequelize.import(path.join(__dirname, file));
+  .filter(file => file.indexOf(".") !== 0 && file !== "index.js")
+  .forEach(file => {
+    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes); // Pass sequelize instance and DataTypes
     db[model.name] = model;
   });
 
-Object.keys(db).forEach(function (modelName) {
-  if ("associate" in db[modelName]) {
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
     db[modelName].associate(db);
   }
 });
