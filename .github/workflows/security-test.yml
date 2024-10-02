@@ -108,6 +108,9 @@ jobs:
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
   docker-build-and-push:
+    needs: 
+      - sonarcloud
+      - zap-proxy-orchestron
     runs-on: ubuntu-latest
 
     steps:
@@ -137,6 +140,7 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/log8100-tp2:latest
 
   deploy-to-azure:
+    needs: docker-build-and-push
     name: Deploy to azure
     runs-on: ubuntu-latest
     steps:

@@ -1,7 +1,7 @@
 services:
   app:
     container_name: log8100-tp2-webapp
-    image: log8100-tp2-webapp
+    image: oliviertremblaynoel/log8100-tp2:latest
     ports:
       - 9090:9090
       - 3000:3000
