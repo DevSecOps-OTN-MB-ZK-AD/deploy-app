@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  workflow_dispatch: # Allows manual triggering via GitHub UI
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  zap-proxy-orchestron:
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        run: |
+          cd src
+          npm install
+
+      - name: Start Application
+        run: |
+          cd src
+          nohup npm start &
+
+      - name: Wait for Application to Start
+        run: |
+          for i in {1..30}; do
+            curl -s http://localhost:3000/ && break || sleep 5
+          done
+
+      - name: ZAP Scan
+        uses: zaproxy/action-full-scan@v0.11.0
+        with:
+          target: 'http://localhost:3000'
+          cmd_options: '-J report.json -w report.md -r report.html -x report.xml'
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        with:
+          path: report*
+
+      - name: Call Orchestron API
+        run: |
+          response=$(
+            curl -s -w "%{http_code}" \
+              -H "Secret-Key: ${{ secrets.ORCHESTRON_SECRET }}" \
+              -H "Access-Key: ${{ secrets.ORCHESTRON_ACCESS }}" \
+              -F file=@report.xml \
+              "${{ secrets.ORCHESTRON_URL }}" \
+          )
+
+          if [ "$response" -ne 200 ]; then
+            echo "Error: API call failed with status code $response"
+            exit 1
+          else
+            echo "API call succeeded with status code $response"
+          fi
+
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  dependabot-auto-approve-pr:
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'DevSecOps-OTN-MB-ZK-AD/deploy-app'
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Add a label for all production dependencies
+        if: steps.metadata.outputs.dependency-type == 'direct:production'
+        run: gh pr edit "$PR_URL" --add-label "production"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+
+      - name: Approve a PR
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Enable auto-merge for Dependabot PRs
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+  docker-build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Log in to DockerHub
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build the Docker image
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/log8100-tp2:latest .
+
+      # Push the Docker image to DockerHub
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/log8100-tp2:latest
+
+  deploy-to-azure:
+    name: Deploy to azure
+    runs-on: ubuntu-latest
+    steps:
+      - name: TODO
+        run: echo TODO
