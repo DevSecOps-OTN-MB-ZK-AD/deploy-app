@@ -7,7 +7,9 @@ const env = process.env.NODE_ENV || "development";
 const config = require("../config/db.js");
 let sequelize;
 
-if (process.env.DATABASE_URL) {
+process.env.DATABASE_URL = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+
+if (process.env.DB_HOST) {
   const dbUrl = process.env.DATABASE_URL;
   const urlPattern = /^(postgres):\/\/(.*):(.*)@(.*):(\d+)\/(.*)$/; // Match PostgreSQL URL format
   const match = dbUrl.match(urlPattern);
