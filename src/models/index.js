@@ -7,36 +7,14 @@ const env = process.env.NODE_ENV || "development";
 const config = require("../config/db.js");
 let sequelize;
 
-process.env.DATABASE_URL = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
-
-if (process.env.DB_HOST) {
-  const dbUrl = process.env.DATABASE_URL;
-  const urlPattern = /^(postgres):\/\/(.*):(.*)@(.*):(\d+)\/(.*)$/; // Match PostgreSQL URL format
-  const match = dbUrl.match(urlPattern);
-
-  if (match) {
-    const dialect = match[1];
-    const username = match[2];
-    const password = match[3];
-    const host = match[4];
-    const port = match[5];
-    const database = match[6];
-
-    sequelize = new Sequelize(database, username, password, {
-      host: host,
-      port: port,
-      dialect: dialect,
-    });
-  } else {
-    console.error("DATABASE_URL format is incorrect.");
-    process.exit(1);
-  }
-} else {
-  sequelize = new Sequelize("db", "db", "db", {
-    host: "db",
-    dialect: "postgres",
+sequelize = new Sequelize(process.env.AZURE_POSTGRESQL_DATABASE, 
+  process.env.AZURE_POSTGRESQL_USER, 
+  process.env.AZURE_POSTGRESQL_PASSWORD, 
+  {
+    host: process.env.AZURE_POSTGRESQL_HOST,
+    port: process.env.AZURE_POSTGRESQL_PORT,
+    dialect: 'postgres',
   });
-}
 
 sequelize
   .authenticate()
