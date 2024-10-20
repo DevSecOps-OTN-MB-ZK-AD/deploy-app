@@ -108,9 +108,9 @@ jobs:
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
   docker-build-and-push:
-    # needs: 
-    #   - sonarcloud
-    #   - zap-proxy-orchestron
+    needs: 
+      - sonarcloud
+      - zap-proxy-orchestron
     runs-on: ubuntu-latest
 
     steps:
@@ -143,6 +143,21 @@ jobs:
     needs: docker-build-and-push
     name: Deploy to azure
     runs-on: ubuntu-latest
-    steps:
-      - name: TODO
-        run: echo TODO
+    # steps:
+    #   - name: Log in to Azure
+    #     uses: azure/login@v1
+    #     with:
+    #       creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    #   - name: Deploy to Azure Container App
+    #     uses: azure/container-apps-deploy-action@v1
+    #     with:
+    #       containerAppName: tp2-webapp-log8100
+    #       resourceGroup: NetworkWatcherRG
+    #       imageToDeploy: ${{ secrets.DOCKERHUB_USERNAME }}/log8100-tp2:latest
+    #       environmentVariables: |
+    #         AZURE_POSTGRESQL_USER=${{ secrets.AZURE_POSTGRESQL_USER }}
+    #         AZURE_POSTGRESQL_HOST=${{ secrets.AZURE_POSTGRESQL_HOST }}
+    #         AZURE_POSTGRESQL_DATABASE=${{ secrets.AZURE_POSTGRESQL_DATABASE }}
+    #         AZURE_POSTGRESQL_PASSWORD=${{ secrets.AZURE_POSTGRESQL_PASSWORD }}
+    #         AZURE_POSTGRESQL_PORT=${{ secrets.AZURE_POSTGRESQL_PORT }}
